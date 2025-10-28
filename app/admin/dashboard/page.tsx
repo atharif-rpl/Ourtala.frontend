@@ -122,7 +122,7 @@ export default function DashboardHome() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-        <p className="text-sm text-slate-500 mt-1">Welcome back! Here's your organization overview.</p>
+        <p className="text-sm text-slate-500 mt-1">Welcome back! Here&apos;s your organization overview.</p>
       </div>
 
       {/* Stats Grid (Ini tidak perlu diubah) */}

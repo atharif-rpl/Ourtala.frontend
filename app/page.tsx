@@ -3,12 +3,13 @@
 // JANGAN taruh "use client" di sini
 
 // 1. IMPORT "TUBUH" (CLIENT COMPONENT BARU ANDA)
+// (Pastikan path ini benar)
 import ClientRoot from "./ClientRoot"; 
 
 // 2. IMPORT TIPE DATA (SESUAIKAN PATH)
+// (Path Anda sepertinya sudah benar jika 'components' dan 'admin' ada di dalam 'app')
 import type { DonationCampaign } from "./admin/dashboard/donations/types";
-import type { DonationProject } from "./components/donation/types";
-// app/page.tsx
+import type { DonationProject } from "./components/donation/types"; // atau ./components/sections/donation/types
 
 // 3. FUNGSI "OTAK" YANG SUDAH DIPERBAIKI
 async function getCampaigns(): Promise<DonationCampaign[]> {
@@ -22,25 +23,23 @@ async function getCampaigns(): Promise<DonationCampaign[]> {
     const data = await res.json(); 
 
     // --- LOGIKA BARU YANG LEBIH PINTAR ---
-
-    // Cek 1: Apakah 'data' itu sendiri adalah sebuah array?
-    // (Ini terjadi jika DonationResource::collection tidak membungkus)
     if (Array.isArray(data)) {
       return data; // Langsung kembalikan array-nya
     }
-
-    // Cek 2: Apakah 'data' adalah objek yang punya key 'data'
-    // dan 'data.data' adalah sebuah array?
     if (data && Array.isArray(data.data)) {
       return data.data; // Kembalikan array yang dibungkus
     }
     
-    // Jika bukan keduanya, API mengirim format yang aneh.
     console.warn("Format data API tidak terduga, mengembalikan array kosong.");
     return [];
 
-  } catch (error: any) {
-    console.error("Fetch Error:", error.message);
+  // --- FIX ERROR VERCEL DI SINI ---
+  } catch (error: unknown) { // Ganti 'any' menjadi 'unknown'
+    let message = "Unknown fetch error";
+    if (error instanceof Error) {
+      message = error.message; // Sekarang aman mengakses .message
+    }
+    console.error("Fetch Error:", message);
     return []; // Jika fetch gagal, kembalikan array kosong
   }
 }
@@ -54,6 +53,7 @@ export default async function Home() {
   // 6. Otak "menerjemahkan" data API (DonationCampaign)
   //    menjadi data yang dimengerti Tubuh (DonationProject)
   const projectsForComponent: DonationProject[] = campaignsFromApi.map(campaign => {
+    // Pastikan Tipe 'DonationProject' Anda Menerima Semua Properti Ini
     return {
       id: campaign.id,
       title: campaign.title,
@@ -64,6 +64,10 @@ export default async function Home() {
       raised: Number(campaign.amountCollected) || 0,
       waNumber: campaign.whatsappLink || "", 
       status: campaign.status || "active",
+      
+      // Jika 'DonationProject' butuh 'longDescription',
+      // Anda bisa isi dengan 'campaign.description' lagi
+      longDescription: campaign.description, 
     };
   });
 

@@ -1,50 +1,41 @@
-// /components/donations/ManageDonationsPage.tsx
-
 "use client"
 
-import { useState, useEffect } from "react"
-// Hapus 'initialCampaigns' karena kita akan fetch dari API
-// import { initialCampaigns } from "./data" 
+import { useState, useEffect, useCallback } from "react" // <-- Tambah useCallback
 import type { DonationCampaign } from "./types"
 import { DonationsHeader } from "./DonationsHeader"
 import { CampaignCard } from "./CampaignCard"
 import { EmptyState } from "./EmptyState"
-import { CampaignFormModal } from "./CampaignFormModal"
+import { CampaignFormModal } from "./CampaignFormModal";
 
 export default function ManageDonationsPage() {
   const [campaigns, setCampaigns] = useState<DonationCampaign[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCampaign, setSelectedCampaign] = useState<Partial<DonationCampaign> | null>(null)
 
-  // Ambil URL API dari environment variables
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
-  // --- 1. FUNGSI BARU UNTUK MENGAMBIL DATA ---
-  // Kita buat fungsi ini agar bisa dipanggil ulang untuk me-refresh
-  const fetchCampaigns = async () => {
+  // FIX 1: Bungkus dengan useCallback
+  const fetchCampaigns = useCallback(async () => {
     setIsLoading(true)
     try {
       const res = await fetch(`${apiUrl}/donations`, { cache: 'no-store' })
       if (!res.ok) throw new Error("Gagal mengambil data")
       
       const data = await res.json()
-      // 'data.data' jika Anda menggunakan Resource Collection
       setCampaigns(data.data || data) 
-    } catch (error) {
+    } catch (error: unknown) { // <-- FIX: 'any' -> 'unknown'
       console.error(error)
       alert("Gagal memuat campaign.")
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [apiUrl]) // <-- 'apiUrl' jadi dependency
 
-  // --- 2. GANTI useEffect ---
-  // Sekarang useEffect akan memanggil API saat halaman dibuka
+  // FIX 2: Tambahkan 'fetchCampaigns' ke dependency array
   useEffect(() => {
     fetchCampaigns()
-  }, []) // Dependency array kosong, jalan sekali saat mount
+  }, [fetchCampaigns]) // <-- Ini memperbaiki warning 'exhaustive-deps'
 
-  // --- 3. FUNGSI BARU UNTUK MENANGANI DELETE ---
   const handleDelete = async (id: number) => {
     if (!window.confirm("Yakin mau hapus campaign ini?")) {
       return
@@ -62,26 +53,28 @@ export default function ManageDonationsPage() {
       }
 
       alert('Campaign berhasil dihapus!')
-      fetchCampaigns() // Refresh data setelah berhasil hapus
+      fetchCampaigns() 
       
-    } catch (error: any) {
+    // FIX 3: Ganti 'any' menjadi 'unknown'
+    } catch (error: unknown) { 
       console.error(error)
-      alert("Error: " + error.message)
+      let message = "Gagal menghapus data";
+      if (error instanceof Error) {
+        message = error.message;
+      }
+      alert("Error: " + message)
     }
   }
 
-  // --- 4. FUNGSI BARU UNTUK CALLBACK SUKSES ---
-  // Ini akan dipanggil oleh modal JIKA submit (add/edit) berhasil
   const handleSuccess = () => {
-    setSelectedCampaign(null) // Tutup modal
-    fetchCampaigns() // Ambil data terbaru dari server
+    setSelectedCampaign(null) 
+    fetchCampaigns() 
   }
 
   if (isLoading) return <div className="p-6 text-slate-600">Loading campaigns...</div>
 
   return (
     <div className="p-6">
-      {/* Ini sudah benar, 'onAddCampaign' tidak ada di DonationsHeader */}
       <DonationsHeader onAddCampaign={() => setSelectedCampaign({})} />
 
       {campaigns.length > 0 ? (
@@ -90,9 +83,7 @@ export default function ManageDonationsPage() {
             <CampaignCard
               key={campaign.id}
               campaign={campaign}
-              // Ini sudah benar
               onEdit={() => setSelectedCampaign(campaign)}
-              // Arahkan ke fungsi 'handleDelete' yang baru
               onDelete={() => handleDelete(campaign.id)}
             />
           ))}
@@ -101,14 +92,10 @@ export default function ManageDonationsPage() {
         <EmptyState />
       )}
 
-      {/* --- 5. MODIFIKASI PROPS MODAL --- */}
-      {/* Kita hanya render modal jika 'selectedCampaign' tidak null */}
       {selectedCampaign && (
         <CampaignFormModal
           campaign={selectedCampaign}
           onClose={() => setSelectedCampaign(null)}
-          // Ganti 'onSave' menjadi 'onSuccess'
-          // Modal Anda akan memanggil ini setelah API call-nya sukses
           onSuccess={handleSuccess} 
         />
       )}
