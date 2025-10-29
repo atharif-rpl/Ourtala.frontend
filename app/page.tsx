@@ -7,11 +7,11 @@ import ClientRoot from "./ClientRoot";
 
 // 2. IMPORT TIPE DATA
 import type { DonationCampaign } from "./admin/dashboard/donations/types";
-import type { DonationProject } from "./components/donation/types";
+import type { DonationProject } from "./components/donation/types"; // Atau path yang benar
 
-// 3. SETTING UNTUK NEXT.JS RENDER DINAMIS (FIX ERROR VERCEL)
-export const dynamic = "force-dynamic";
-export const revalidate = 0; // Pastikan selalu ambil data baru dari API
+// 3. HAPUS SETTING DINAMIS (INI PENYEBAB ERROR BUILD)
+// export const dynamic = "force-dynamic"; // <-- HAPUS
+// export const revalidate = 0; // <-- HAPUS
 
 // 4. FUNGSI FETCH DATA DARI BACKEND
 async function getCampaigns(): Promise<DonationCampaign[]> {
@@ -19,7 +19,10 @@ async function getCampaigns(): Promise<DonationCampaign[]> {
   console.log("🔗 Fetching from:", `${apiUrl}/donations`);
 
   try {
-    const res = await fetch(`${apiUrl}/donations`, { cache: "no-store" });
+    // --- HAPUS { cache: "no-store" } ---
+    const res = await fetch(`${apiUrl}/donations`); 
+    // ------------------------------------
+
     if (!res.ok) {
       throw new Error("Gagal mengambil data dari API");
     }
@@ -38,7 +41,6 @@ async function getCampaigns(): Promise<DonationCampaign[]> {
     return [];
 
   } catch (error: unknown) {
-    // --- FIX TIPE 'any' KE 'unknown' ---
     let message = "Unknown fetch error";
     if (error instanceof Error) {
       message = error.message;
@@ -65,7 +67,7 @@ export default async function Home() {
       raised: Number(campaign.amountCollected) || 0,
       waNumber: campaign.whatsappLink || "",
       status: campaign.status || "active",
-      longDescription: campaign.description,
+      longDescription: campaign.description, // Isi sesuai kebutuhan
     };
   });
 
