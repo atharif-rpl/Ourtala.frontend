@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
-  output: 'export',
+  // output: 'export', // <-- HAPUS BARIS INI
 
-  // TAMBAHKAN BLOK INI
+  // Konfigurasi Anda yang lain (biarkan saja)
   images: {
     unoptimized: true,
   },
