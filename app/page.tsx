@@ -1,59 +1,60 @@
 // app/page.tsx
 // INI ADALAH "OTAK" (SERVER COMPONENT) 🧠
-// JANGAN taruh "use client" di sini
+// Jangan taruh "use client" di sini!
 
-// 1. IMPORT "TUBUH" (CLIENT COMPONENT BARU ANDA)
-// (Pastikan path ini benar)
-import ClientRoot from "./ClientRoot"; 
+// 1. IMPORT "TUBUH" (CLIENT COMPONENT)
+import ClientRoot from "./ClientRoot";
 
-// 2. IMPORT TIPE DATA (SESUAIKAN PATH)
-// (Path Anda sepertinya sudah benar jika 'components' dan 'admin' ada di dalam 'app')
+// 2. IMPORT TIPE DATA
 import type { DonationCampaign } from "./admin/dashboard/donations/types";
-import type { DonationProject } from "./components/donation/types"; // atau ./components/sections/donation/types
+import type { DonationProject } from "./components/donation/types";
 
-// 3. FUNGSI "OTAK" YANG SUDAH DIPERBAIKI
+// 3. SETTING UNTUK NEXT.JS RENDER DINAMIS (FIX ERROR VERCEL)
+export const dynamic = "force-dynamic";
+export const revalidate = 0; // Pastikan selalu ambil data baru dari API
+
+// 4. FUNGSI FETCH DATA DARI BACKEND
 async function getCampaigns(): Promise<DonationCampaign[]> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  console.log("🔗 Fetching from:", `${apiUrl}/donations`);
+
   try {
-    const res = await fetch(`${apiUrl}/donations`, { cache: 'no-store' });
+    const res = await fetch(`${apiUrl}/donations`, { cache: "no-store" });
     if (!res.ok) {
       throw new Error("Gagal mengambil data dari API");
     }
 
-    const data = await res.json(); 
+    const data = await res.json();
 
-    // --- LOGIKA BARU YANG LEBIH PINTAR ---
+    // --- LOGIKA UNTUK MENANGANI FORMAT API ---
     if (Array.isArray(data)) {
-      return data; // Langsung kembalikan array-nya
+      return data;
     }
     if (data && Array.isArray(data.data)) {
-      return data.data; // Kembalikan array yang dibungkus
+      return data.data;
     }
-    
-    console.warn("Format data API tidak terduga, mengembalikan array kosong.");
+
+    console.warn("⚠️ Format data API tidak terduga, mengembalikan array kosong.");
     return [];
 
-  // --- FIX ERROR VERCEL DI SINI ---
-  } catch (error: unknown) { // Ganti 'any' menjadi 'unknown'
+  } catch (error: unknown) {
+    // --- FIX TIPE 'any' KE 'unknown' ---
     let message = "Unknown fetch error";
     if (error instanceof Error) {
-      message = error.message; // Sekarang aman mengakses .message
+      message = error.message;
     }
-    console.error("Fetch Error:", message);
-    return []; // Jika fetch gagal, kembalikan array kosong
+    console.error("❌ Fetch Error:", message);
+    return [];
   }
 }
 
-// 4. INI ADALAH HALAMAN SERVER ANDA
+// 5. FUNGSI UTAMA HALAMAN (SERVER COMPONENT)
 export default async function Home() {
-  
-  // 5. Otak mengambil data dari Laravel
+  // 6. OTOMATIS AMBIL DATA DARI LARAVEL BACKEND
   const campaignsFromApi = await getCampaigns();
 
-  // 6. Otak "menerjemahkan" data API (DonationCampaign)
-  //    menjadi data yang dimengerti Tubuh (DonationProject)
-  const projectsForComponent: DonationProject[] = campaignsFromApi.map(campaign => {
-    // Pastikan Tipe 'DonationProject' Anda Menerima Semua Properti Ini
+  // 7. KONVERSI DATA API → FORMAT UNTUK CLIENT COMPONENT
+  const projectsForComponent: DonationProject[] = campaignsFromApi.map((campaign) => {
     return {
       id: campaign.id,
       title: campaign.title,
@@ -62,18 +63,12 @@ export default async function Home() {
       imageUrl: campaign.imageUrl,
       goal: Number(campaign.amountTarget) || 0,
       raised: Number(campaign.amountCollected) || 0,
-      waNumber: campaign.whatsappLink || "", 
+      waNumber: campaign.whatsappLink || "",
       status: campaign.status || "active",
-      
-      // Jika 'DonationProject' butuh 'longDescription',
-      // Anda bisa isi dengan 'campaign.description' lagi
-      longDescription: campaign.description, 
+      longDescription: campaign.description,
     };
   });
 
-  // 7. Otak me-render "Tubuh" (ClientRoot) 
-  //    dan memberinya data 'projects'
-  return (
-    <ClientRoot projects={projectsForComponent} />
-  );
+  // 8. RENDER CLIENT COMPONENT DENGAN DATA
+  return <ClientRoot projects={projectsForComponent} />;
 }
