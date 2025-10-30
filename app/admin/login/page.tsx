@@ -1,4 +1,3 @@
-// app/login/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -17,6 +16,7 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
 
+    // Ambil URL API dari Vercel Environment Variable
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
     try {
@@ -32,18 +32,22 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        // Jika validasi gagal (422) atau login salah (401)
+        // Jika validasi gagal (422) atau login salah (401/404)
         setError(data.message || "Email atau password salah.");
         setIsLoading(false);
         return;
       }
 
       // --- LOGIN SUKSES ---
+      
       // 1. Simpan token di cookies (berlaku 1 hari)
+      // 'secure: true' penting untuk HTTPS di produksi
       Cookies.set("auth-token", data.token, { expires: 1, secure: true, sameSite: 'strict' });
-
+      
       // 2. Arahkan ke dashboard
-      router.push("/admin/dashboard"); // Ganti jika path dashboard Anda beda
+      // Kita 'refresh' agar middleware bisa mendeteksi token baru
+      router.push("/admin/dashboard");
+      router.refresh(); // Memaksa refresh layout
 
     } catch (err) {
       setError("Gagal terhubung ke server. Coba lagi nanti.");
@@ -52,49 +56,49 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f4f4f4' }}>
+    <div className="flex justify-center items-center min-h-screen bg-slate-100">
       <form 
         onSubmit={handleSubmit} 
-        style={{ padding: '2rem', background: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', width: '350px' }}
+        className="p-8 bg-white rounded-lg shadow-md w-full max-w-sm"
       >
-        <h1 style={{ textAlign: 'center', fontSize: '1.5rem', fontWeight: '600', marginBottom: '1.5rem' }}>
+        <h1 className="text-2xl font-semibold text-center text-slate-900 mb-6">
           Dashboard Login
         </h1>
 
         {error && (
-          <p style={{ color: 'red', background: '#ffeeee', padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+          <p className="text-red-600 bg-red-100 p-3 rounded-md mb-4 text-sm text-center">
             {error}
           </p>
         )}
 
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="email" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Email</label>
+        <div className="mb-4">
+          <label htmlFor="email" className="block mb-2 text-sm font-medium text-slate-700">Email</label>
           <input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            style={{ width: '100%', padding: '0.75rem', border: '1px solid #ccc', borderRadius: '4px' }}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
 
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label htmlFor="password" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Password</label>
+        <div className="mb-6">
+          <label htmlFor="password" className="block mb-2 text-sm font-medium text-slate-700">Password</label>
           <input
             id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={{ width: '100%', padding: '0.75rem', border: '1px solid #ccc', borderRadius: '4px' }}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
 
         <button 
           type="submit" 
           disabled={isLoading}
-          style={{ width: '100%', padding: '0.75rem', background: '#0d9488', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', opacity: isLoading ? 0.7 : 1 }}
+          className="w-full py-2 px-4 bg-teal-600 text-white rounded-md font-semibold hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isLoading ? "Loading..." : "Login"}
         </button>

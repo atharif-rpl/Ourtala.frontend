@@ -1,4 +1,3 @@
-// middleware.ts
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -13,12 +12,13 @@ export function middleware(request: NextRequest) {
   // 3. JIKA: Mau ke dashboard TAPI TIDAK punya token
   if (pathname.startsWith('/admin/dashboard') && !token) {
     // Redirect ke halaman login
-    const loginUrl = new URL('/login', request.url);
+    const loginUrl = new URL('/admin/login', request.url); // Arahkan ke login admin
+    loginUrl.searchParams.set("redirectedFrom", pathname); // (Opsional: simpan halaman asal)
     return NextResponse.redirect(loginUrl);
   }
 
   // 4. JIKA: Mau ke halaman login TAPI SUDAH punya token
-  if (pathname.startsWith('/login') && token) {
+  if (pathname.startsWith('/admin/login') && token) {
     // Redirect ke dashboard
     const dashboardUrl = new URL('/admin/dashboard', request.url);
     return NextResponse.redirect(dashboardUrl);
@@ -32,6 +32,6 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/admin/dashboard/:path*', // Semua halaman di dalam /admin/dashboard
-    '/login',                   // Halaman login
+    '/admin/login',             // Halaman login
   ],
 };
