@@ -28,7 +28,9 @@ export default function ManageUsersPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  
+  // HAPUS selectedUser yang tidak terpakai
+  // const [selectedUser, setSelectedUser] = useState<User | null>(null); 
 
   const [error, setError] = useState<string | null>(null);
 
@@ -81,7 +83,7 @@ export default function ManageUsersPage() {
   // --- 2. FUNGSI UNTUK HANDLERS ---
   const openAddModal = () => {
     setModalMode("add");
-    setSelectedUser(null);
+    // setSelectedUser(null); // Baris ini juga tidak perlu
     setName("");
     setEmail("");
     setPassword("");
@@ -298,4 +300,3 @@ export default function ManageUsersPage() {
     </div>
   );
 }
-
