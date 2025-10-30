@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Heart, Users, UserCheck, TrendingUp } from "lucide-react"
+import Cookies from "js-cookie"
 
 // Tipe ini sudah cocok dengan 'DonationResource' dari Laravel
 interface Campaign {
@@ -53,12 +54,21 @@ export default function DashboardHome() {
     const fetchDashboardData = async () => {
       setIsLoading(true)
       try {
+        
         // --- 1. Ambil Data Donasi ASLI ---
         const apiUrl = process.env.NEXT_PUBLIC_API_URL
+        const token = Cookies.get('auth-token');
         // (Pastikan error 'api/donations' not found Anda sudah beres)
-        const res = await fetch(`${apiUrl}/donations`, { cache: "no-store" })
+        const res = await fetch(`${apiUrl}/donations`, 
+        { cache: "no-store",
+          headers: { // <-- TAMBAHKAN INI
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          }
+         })
         if (!res.ok) {
           throw new Error("Gagal mengambil data donasi")
+          
         }
         
         // Data dari Laravel (sudah di-sort 'latest()' oleh Controller)

@@ -6,6 +6,7 @@ import { DonationsHeader } from "./DonationsHeader"
 import { CampaignCard } from "./CampaignCard"
 import { EmptyState } from "./EmptyState"
 import { CampaignFormModal } from "./CampaignFormModal";
+import Cookies from "js-cookie"
 
 export default function ManageDonationsPage() {
   const [campaigns, setCampaigns] = useState<DonationCampaign[]>([])
@@ -17,8 +18,16 @@ export default function ManageDonationsPage() {
   // FIX 1: Bungkus dengan useCallback
   const fetchCampaigns = useCallback(async () => {
     setIsLoading(true)
+    const token = Cookies.get('auth-token');
     try {
-      const res = await fetch(`${apiUrl}/donations`, { cache: 'no-store' })
+      const res = await fetch(`${apiUrl}/donations`,
+      { cache: 'no-store',
+        headers: { // <-- 2. TAMBAHKAN BLOK HEADERS INI
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        }
+       })
+      
       if (!res.ok) throw new Error("Gagal mengambil data")
       
       const data = await res.json()
@@ -40,11 +49,15 @@ export default function ManageDonationsPage() {
     if (!window.confirm("Yakin mau hapus campaign ini?")) {
       return
     }
+    const token = Cookies.get('auth-token');
 
     try {
       const res = await fetch(`${apiUrl}/donations/${id}`, {
         method: 'DELETE',
-        headers: { 'Accept': 'application/json' },
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
       })
 
       if (!res.ok) {
