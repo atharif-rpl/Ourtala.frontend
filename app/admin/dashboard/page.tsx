@@ -70,6 +70,7 @@ export default function DashboardHome() {
         if (!res.ok) {
           // Jika token tidak valid (401), redirect ke login
           if (res.status === 401) {
+            Cookies.remove('auth-token'); // Hapus token palsu
             window.location.href = '/admin/login'; // Paksa redirect
             return;
           }
@@ -77,7 +78,8 @@ export default function DashboardHome() {
         }
         
         const data = await res.json()
-        const campaigns: Campaign[] = data.data || [] 
+        // Kita pakai 'data' langsung karena controller 'index' kita mengembalikan collection
+        const campaigns: Campaign[] = data.data || data; 
 
         const totalCampaigns = campaigns.length
         const activeCampaigns = campaigns.filter((c) => c.status === "active").length
@@ -94,12 +96,15 @@ export default function DashboardHome() {
           totalCampaigns: totalCampaigns,
           activeCampaigns: activeCampaigns,
           totalDonations: totalDonations,
-          totalMembers: 2,
-          totalUsers: 3,
-          activeUsers: 3,
+          totalMembers: 2, // Masih bohongan
+          totalUsers: 3, // Masih bohongan
+          activeUsers: 3, // Masih bohongan
         })
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Gagal fetch data dashboard:", error)
+        // Jika error, mungkin token invalid, paksa login ulang
+        Cookies.remove('auth-token');
+        window.location.href = '/admin/login';
       } finally {
         setIsLoading(false)
       }
@@ -240,3 +245,4 @@ export default function DashboardHome() {
     </div>
   )
 }
+

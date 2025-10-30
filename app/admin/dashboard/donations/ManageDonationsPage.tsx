@@ -35,6 +35,7 @@ export default function ManageDonationsPage() {
       if (!res.ok) {
         // Jika token tidak valid (401), redirect ke login
         if (res.status === 401) {
+          Cookies.remove('auth-token'); // Hapus token palsu
           window.location.href = '/admin/login'; // Paksa redirect
           return;
         }
@@ -42,7 +43,8 @@ export default function ManageDonationsPage() {
       }
       
       const data = await res.json()
-      setCampaigns(data.data || data) 
+      // Kita pakai 'data' langsung karena controller 'index' kita mengembalikan collection
+      setCampaigns(data.data || data);
     } catch (error: unknown) {
       console.error(error)
       alert("Gagal memuat campaign.")
@@ -75,6 +77,7 @@ export default function ManageDonationsPage() {
 
       if (!res.ok) {
         if (res.status === 401) {
+          Cookies.remove('auth-token');
           window.location.href = '/admin/login';
           return;
         }
@@ -132,3 +135,4 @@ export default function ManageDonationsPage() {
     </div>
   )
 }
+
