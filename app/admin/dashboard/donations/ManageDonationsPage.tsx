@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react" // <-- Tambah useCallback
+// 1. IMPORT Cookies
+import { useState, useEffect, useCallback } from "react"
+import Cookies from "js-cookie" 
 import type { DonationCampaign } from "./types"
 import { DonationsHeader } from "./DonationsHeader"
 import { CampaignCard } from "./CampaignCard"
 import { EmptyState } from "./EmptyState"
 import { CampaignFormModal } from "./CampaignFormModal";
-import Cookies from "js-cookie"
 
 export default function ManageDonationsPage() {
   const [campaigns, setCampaigns] = useState<DonationCampaign[]>([])
@@ -15,52 +16,68 @@ export default function ManageDonationsPage() {
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
-  // FIX 1: Bungkus dengan useCallback
   const fetchCampaigns = useCallback(async () => {
     setIsLoading(true)
-    const token = Cookies.get('auth-token');
+    
+    // --- 2. Ambil Token ---
+    const token = Cookies.get('auth-token'); 
+
     try {
-      const res = await fetch(`${apiUrl}/donations`,
-      { cache: 'no-store',
-        headers: { // <-- 2. TAMBAHKAN BLOK HEADERS INI
+      const res = await fetch(`${apiUrl}/donations`, { 
+        cache: 'no-store',
+        // --- 3. Tambahkan Headers ---
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
         }
-       })
+      })
       
-      if (!res.ok) throw new Error("Gagal mengambil data")
+      if (!res.ok) {
+        // Jika token tidak valid (401), redirect ke login
+        if (res.status === 401) {
+          window.location.href = '/admin/login'; // Paksa redirect
+          return;
+        }
+        throw new Error("Gagal mengambil data")
+      }
       
       const data = await res.json()
       setCampaigns(data.data || data) 
-    } catch (error: unknown) { // <-- FIX: 'any' -> 'unknown'
+    } catch (error: unknown) {
       console.error(error)
       alert("Gagal memuat campaign.")
     } finally {
       setIsLoading(false)
     }
-  }, [apiUrl]) // <-- 'apiUrl' jadi dependency
+  }, [apiUrl]) 
 
-  // FIX 2: Tambahkan 'fetchCampaigns' ke dependency array
   useEffect(() => {
     fetchCampaigns()
-  }, [fetchCampaigns]) // <-- Ini memperbaiki warning 'exhaustive-deps'
+  }, [fetchCampaigns]) 
 
   const handleDelete = async (id: number) => {
     if (!window.confirm("Yakin mau hapus campaign ini?")) {
       return
     }
+
+    // --- 4. Ambil Token ---
     const token = Cookies.get('auth-token');
 
     try {
       const res = await fetch(`${apiUrl}/donations/${id}`, {
         method: 'DELETE',
-        headers: { 
+        // --- 5. Tambahkan Headers ---
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
         },
       })
 
       if (!res.ok) {
+        if (res.status === 401) {
+          window.location.href = '/admin/login';
+          return;
+        }
         const err = await res.json()
         throw new Error(err.message || "Gagal menghapus data")
       }
@@ -68,7 +85,6 @@ export default function ManageDonationsPage() {
       alert('Campaign berhasil dihapus!')
       fetchCampaigns() 
       
-    // FIX 3: Ganti 'any' menjadi 'unknown'
     } catch (error: unknown) { 
       console.error(error)
       let message = "Gagal menghapus data";
@@ -87,6 +103,7 @@ export default function ManageDonationsPage() {
   if (isLoading) return <div className="p-6 text-slate-600">Loading campaigns...</div>
 
   return (
+    // ... (Seluruh JSX Anda tidak perlu diubah, biarkan apa adanya) ...
     <div className="p-6">
       <DonationsHeader onAddCampaign={() => setSelectedCampaign({})} />
 

@@ -1,8 +1,9 @@
 "use client"
 
+// 1. IMPORT Cookies
 import { useState, useEffect } from "react"
+import Cookies from "js-cookie" 
 import { Heart, Users, UserCheck, TrendingUp } from "lucide-react"
-import Cookies from "js-cookie"
 
 // Tipe ini sudah cocok dengan 'DonationResource' dari Laravel
 interface Campaign {
@@ -25,9 +26,9 @@ interface DashboardStats {
   totalCampaigns: number
   activeCampaigns: number
   totalDonations: number
-  totalMembers: number // <-- Masih bohongan
-  totalUsers: number // <-- Masih bohongan
-  activeUsers: number // <-- Masih bohongan
+  totalMembers: number 
+  totalUsers: number 
+  activeUsers: number 
 }
 
 export default function DashboardHome() {
@@ -49,71 +50,56 @@ export default function DashboardHome() {
     )
   }
 
-  // --- MODIFIKASI DIMULAI DI SINI ---
   useEffect(() => {
     const fetchDashboardData = async () => {
       setIsLoading(true)
       try {
+        // --- 2. Ambil Token ---
+        const token = Cookies.get('auth-token'); 
         
-        // --- 1. Ambil Data Donasi ASLI ---
         const apiUrl = process.env.NEXT_PUBLIC_API_URL
-        const token = Cookies.get('auth-token');
-        // (Pastikan error 'api/donations' not found Anda sudah beres)
-        const res = await fetch(`${apiUrl}/donations`, 
-        { cache: "no-store",
-          headers: { // <-- TAMBAHKAN INI
+        const res = await fetch(`${apiUrl}/donations`, { 
+          cache: "no-store",
+          // --- 3. Tambahkan Headers ---
+          headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json',
           }
-         })
+        })
+        
         if (!res.ok) {
+          // Jika token tidak valid (401), redirect ke login
+          if (res.status === 401) {
+            window.location.href = '/admin/login'; // Paksa redirect
+            return;
+          }
           throw new Error("Gagal mengambil data donasi")
-          
         }
         
-        // Data dari Laravel (sudah di-sort 'latest()' oleh Controller)
         const data = await res.json()
-        const campaigns: Campaign[] = data.data || []
+        const campaigns: Campaign[] = data.data || [] 
 
-        // --- 2. Hitung Statistik ASLI ---
         const totalCampaigns = campaigns.length
         const activeCampaigns = campaigns.filter((c) => c.status === "active").length
         const totalDonations = campaigns.reduce((acc, c) => acc + (Number(c.amountCollected) || 0), 0)
 
-        // --- 3. Set Data Kampanye ASLI ---
-        // Tampilkan 3 kampanye terbaru
         setRecentCampaigns(campaigns.slice(0, 3)) 
 
-        // --- 4. Set Data Member (MASIH BOHONGAN) ---
-        // (Kita belum buat API untuk ini, jadi biarkan data aslinya)
         setRecentMembers([
-          {
-            id: 1,
-            name: "Atharif Pratama Budiman",
-            role: "Web Developer",
-          },
-          {
-            id: 2,
-            name: "Jane Doe",
-            role: "Project Manager",
-          },
+          { id: 1, name: "Atharif Pratama Budiman", role: "Web Developer" },
+          { id: 2, name: "Jane Doe", role: "Project Manager" },
         ])
 
-        // --- 5. Set SEMUA Stats (Gabungan Asli + Bohongan) ---
         setStats({
-          // Stats ASLI dari API Donasi
           totalCampaigns: totalCampaigns,
           activeCampaigns: activeCampaigns,
           totalDonations: totalDonations,
-
-          // Stats BOHONGAN dari kode asli Anda
           totalMembers: 2,
           totalUsers: 3,
           activeUsers: 3,
         })
       } catch (error) {
         console.error("Gagal fetch data dashboard:", error)
-        // Anda bisa set state error di sini jika mau
       } finally {
         setIsLoading(false)
       }
@@ -121,13 +107,13 @@ export default function DashboardHome() {
 
     fetchDashboardData()
   }, [])
-  // --- MODIFIKASI SELESAI DI SINI ---
 
   if (isLoading) {
     return <div className="p-6 text-slate-600">Loading dashboard...</div>
   }
 
   return (
+    // ... (Seluruh JSX Anda tidak perlu diubah, biarkan apa adanya) ...
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
@@ -135,7 +121,7 @@ export default function DashboardHome() {
         <p className="text-sm text-slate-500 mt-1">Welcome back! Here&apos;s your organization overview.</p>
       </div>
 
-      {/* Stats Grid (Ini tidak perlu diubah) */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Donations Card */}
         <div className="bg-white border border-slate-200 rounded-lg p-4">
@@ -178,7 +164,7 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* Recent Activity Section (Ini tidak perlu diubah) */}
+      {/* Recent Activity Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Campaigns */}
         <div className="bg-white border border-slate-200 rounded-lg p-4">
@@ -226,7 +212,7 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        {/* Recent Members (Ini tidak perlu diubah) */}
+        {/* Recent Members */}
         <div className="bg-white border border-slate-200 rounded-lg p-4">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Team Members</h2>
           <div className="space-y-3">
