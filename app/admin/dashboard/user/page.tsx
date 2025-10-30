@@ -1,281 +1,301 @@
-"use client"
+"use client";
 
-import type React from "react"
+import { useState, useEffect, useCallback } from "react";
+import Cookies from "js-cookie";
 
-import { useState, useEffect } from "react"
-import { Plus, Pencil, Trash2, X } from "lucide-react"
-
+// Tipe untuk User (sesuaikan jika perlu)
 interface User {
-  id: number
-  name: string
-  email: string
-  role: "admin" | "moderator" | "user"
-  status: "active" | "inactive"
+  id: number;
+  name: string;
+  email: string;
+  roles: { id: number; name: string }[]; // User bisa punya banyak role
 }
 
-const UserFormModal = ({
-  user,
-  onClose,
-  onSave,
-}: { user: Partial<User> | null; onClose: () => void; onSave: (user: Partial<User>) => void }) => {
-  const [formData, setFormData] = useState<Partial<User>>({})
-
-  useEffect(() => {
-    if (user) {
-      setFormData(user)
-    }
-  }, [user])
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSave(formData)
-  }
-
-  if (!user) return null
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
-        <div className="flex items-center justify-between p-6 border-b border-slate-200">
-          <h2 className="text-lg font-semibold text-slate-900">{user.id ? "Edit User" : "Add New User"}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
-            <input
-              name="name"
-              value={formData.name || ""}
-              onChange={handleChange}
-              placeholder="Full name"
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-            <input
-              name="email"
-              type="email"
-              value={formData.email || ""}
-              onChange={handleChange}
-              placeholder="user@example.com"
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
-            <select
-              name="role"
-              value={formData.role || "user"}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-            >
-              <option value="user">User</option>
-              <option value="moderator">Moderator</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-            <select
-              name="status"
-              value={formData.status || "active"}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-md transition-colors"
-            >
-              Save
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
+// Tipe untuk Role
+type Role = string;
 
 export default function ManageUsersPage() {
-  const [users, setUsers] = useState<User[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [selectedUser, setSelectedUser] = useState<Partial<User> | null>(null)
+  const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // State untuk modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"add" | "edit">("add");
+  
+  // State untuk form
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [selectedRole, setSelectedRole] = useState("");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  const [error, setError] = useState<string | null>(null);
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const token = Cookies.get("auth-token");
+
+  // --- 1. FUNGSI FETCH DATA (USERS & ROLES) ---
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Ambil daftar Users
+      const usersRes = await fetch(`${apiUrl}/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (!usersRes.ok) throw new Error("Gagal mengambil data users");
+      const usersData = await usersRes.json();
+      setUsers(usersData);
+
+      // Ambil daftar Roles (untuk dropdown)
+      const rolesRes = await fetch(`${apiUrl}/roles`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (!rolesRes.ok) throw new Error("Gagal mengambil data roles");
+      const rolesData = await rolesRes.json();
+      setRoles(rolesData);
+      if (rolesData.length > 0) {
+        setSelectedRole(rolesData[0]); // Set default role di form
+      }
+
+    } catch (error: unknown) {
+      console.error(error);
+      if (error instanceof Error) {
+        alert("Error: " + error.message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, token]);
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      // TODO: Replace with actual API call
-      setUsers([
-        {
-          id: 1,
-          name: "Admin User",
-          email: "admin@ourtala.id",
-          role: "admin",
-          status: "active",
+    fetchData();
+  }, [fetchData]);
+
+  // --- 2. FUNGSI UNTUK HANDLERS ---
+  const openAddModal = () => {
+    setModalMode("add");
+    setSelectedUser(null);
+    setName("");
+    setEmail("");
+    setPassword("");
+    setSelectedRole(roles[0] || "");
+    setError(null);
+    setIsModalOpen(true);
+  };
+  
+  // (Fungsi Edit akan kita tambahkan nanti jika perlu)
+
+  const handleDelete = async (userId: number) => {
+    if (!window.confirm("Yakin mau hapus user ini? User tidak bisa dikembalikan.")) {
+      return;
+    }
+    try {
+      const res = await fetch(`${apiUrl}/users/${userId}`, {
+        method: "DELETE",
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
         },
-        {
-          id: 2,
-          name: "Moderator User",
-          email: "moderator@ourtala.id",
-          role: "moderator",
-          status: "active",
-        },
-        {
-          id: 3,
-          name: "Regular User",
-          email: "user@ourtala.id",
-          role: "user",
-          status: "active",
-        },
-      ])
-      setIsLoading(false)
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Gagal menghapus user");
+      }
+      alert("User berhasil dihapus!");
+      fetchData(); // Refresh data
+    } catch (error: unknown) {
+      if (error instanceof Error) alert("Error: " + error.message);
     }
-    fetchUsers()
-  }, [])
+  };
 
-  const handleSaveUser = (userData: Partial<User>) => {
-    if (userData.id) {
-      setUsers(users.map((u) => (u.id === userData.id ? ({ ...u, ...userData } as User) : u)))
-    } else {
-      const newUser = { ...userData, id: Date.now() } as User
-      setUsers([...users, newUser])
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    // Hanya mode "add" untuk saat ini
+    if (modalMode === "add") {
+      try {
+        const res = await fetch(`${apiUrl}/users`, {
+          method: "POST",
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+            role: selectedRole,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          let errorMsg = data.message || "Gagal membuat user.";
+          if (data.errors) {
+            // Gabungkan semua pesan error validasi
+            errorMsg = Object.values(data.errors).flat().join(" ");
+          }
+          throw new Error(errorMsg);
+        }
+
+        alert("User baru berhasil dibuat!");
+        setIsModalOpen(false);
+        fetchData(); // Refresh data
+      } catch (error: unknown) {
+        if (error instanceof Error) setError(error.message);
+      } finally {
+        setIsLoading(false);
+      }
     }
-    setSelectedUser(null)
-  }
+    // (Logika 'edit' bisa ditambahkan di sini nanti)
+  };
 
-  const handleDeleteUser = (id: number) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      setUsers(users.filter((u) => u.id !== id))
-    }
-  }
-
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "bg-red-100 text-red-700"
-      case "moderator":
-        return "bg-blue-100 text-blue-700"
-      default:
-        return "bg-slate-100 text-slate-700"
-    }
-  }
-
-  const getStatusBadgeColor = (status: string) => {
-    return status === "active" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-700"
-  }
-
-  if (isLoading) {
-    return <div className="p-6 text-slate-600">Loading users...</div>
+  if (isLoading && users.length === 0) {
+    return <div className="p-6 text-slate-600">Loading user management...</div>;
   }
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Users</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage system users and permissions</p>
+          <h1 className="text-2xl font-semibold text-slate-900">User Management</h1>
+          <p className="text-sm text-slate-500 mt-1">Buat, edit, dan atur role untuk user dashboard.</p>
         </div>
         <button
-          onClick={() => setSelectedUser({})}
-          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors"
+          onClick={openAddModal}
+          className="px-4 py-2 bg-teal-600 text-white rounded-md font-semibold text-sm hover:bg-teal-700"
         >
-          <Plus className="w-4 h-4" />
-          Add User
+          + Add New User
         </button>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-        {users.length === 0 ? (
-          <div className="p-8 text-center text-slate-500">
-            <p className="text-sm">No users yet. Add your first user.</p>
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-semibold text-slate-700">Actions</th>
+      {/* --- TABEL DAFTAR USER --- */}
+      <div className="bg-white border border-slate-200 rounded-lg shadow-sm">
+        <table className="w-full table-auto">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Email</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Role</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {users.map((user) => (
+              <tr key={user.id}>
+                <td className="px-4 py-3 text-sm text-slate-900">{user.name}</td>
+                <td className="px-4 py-3 text-sm text-slate-600">{user.email}</td>
+                <td className="px-4 py-3 text-sm text-slate-600">
+                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                    {user.roles.length > 0 ? user.roles[0].name : 'No Role'}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-sm">
+                  <button 
+                    onClick={() => handleDelete(user.id)} 
+                    className="font-medium text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                  {/* Tambahkan tombol Edit Role nanti */}
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-slate-900">{user.name}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-slate-600">{user.email}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-block px-2 py-1 text-xs font-medium rounded ${getRoleBadgeColor(user.role)}`}
-                    >
-                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-block px-2 py-1 text-xs font-medium rounded ${getStatusBadgeColor(user.status)}`}
-                    >
-                      {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => setSelectedUser(user)}
-                        className="p-1.5 text-slate-600 hover:text-teal-600 hover:bg-teal-50 rounded-md transition-colors"
-                        title="Edit"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {selectedUser && (
-        <UserFormModal user={selectedUser} onClose={() => setSelectedUser(null)} onSave={handleSaveUser} />
+      {/* --- MODAL UNTUK ADD/EDIT USER --- */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-lg">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {modalMode === 'add' ? 'Add New User' : 'Edit User'}
+              </h2>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {error && (
+                <p className="text-red-600 bg-red-100 p-3 rounded-md text-sm text-center">
+                  {error}
+                </p>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                <select
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"
+                >
+                  {roles.map((role) => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-md hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-70"
+                >
+                  {isLoading ? 'Saving...' : 'Save User'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
-  )
+  );
 }
+
