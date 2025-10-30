@@ -16,7 +16,6 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
 
-    // Ambil URL API dari Vercel Environment Variable
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
     try {
@@ -24,7 +23,7 @@ export default function LoginPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({ email, password }),
       });
@@ -39,26 +38,31 @@ export default function LoginPage() {
       }
 
       // --- LOGIN SUKSES ---
-      
-      // 1. Simpan token di cookies (berlaku 1 hari)
-      // 'secure: true' penting untuk HTTPS di produksi
-      Cookies.set("auth-token", data.token, { expires: 1, secure: true, sameSite: 'strict' });
-      
-      // 2. Arahkan ke dashboard
-      // Kita 'refresh' agar middleware bisa mendeteksi token baru
-      router.push("/admin/dashboard");
-      router.refresh(); // Memaksa refresh layout
+      Cookies.set("auth-token", data.token, {
+        expires: 1,
+        secure: true,
+        sameSite: "strict",
+      });
 
-    } catch (err) {
-      setError("Gagal terhubung ke server. Coba lagi nanti.");
+      router.push("/admin/dashboard");
+      router.refresh();
+
+      // --- FIX ERROR VERCEL ---
+    } catch (error: unknown) {
+      console.error("Login failed:", error);
+      let message = "Gagal terhubung ke server. Coba lagi nanti.";
+      if (error instanceof Error) {
+        message = error.message;
+      }
+      setError(message);
       setIsLoading(false);
     }
   };
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-slate-100">
-      <form 
-        onSubmit={handleSubmit} 
+      <form
+        onSubmit={handleSubmit}
         className="p-8 bg-white rounded-lg shadow-md w-full max-w-sm"
       >
         <h1 className="text-2xl font-semibold text-center text-slate-900 mb-6">
@@ -72,7 +76,12 @@ export default function LoginPage() {
         )}
 
         <div className="mb-4">
-          <label htmlFor="email" className="block mb-2 text-sm font-medium text-slate-700">Email</label>
+          <label
+            htmlFor="email"
+            className="block mb-2 text-sm font-medium text-slate-700"
+          >
+            Email
+          </label>
           <input
             id="email"
             type="email"
@@ -84,7 +93,12 @@ export default function LoginPage() {
         </div>
 
         <div className="mb-6">
-          <label htmlFor="password" className="block mb-2 text-sm font-medium text-slate-700">Password</label>
+          <label
+            htmlFor="password"
+            className="block mb-2 text-sm font-medium text-slate-700"
+          >
+            Password
+          </label>
           <input
             id="password"
             type="password"
@@ -95,8 +109,8 @@ export default function LoginPage() {
           />
         </div>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={isLoading}
           className="w-full py-2 px-4 bg-teal-600 text-white rounded-md font-semibold hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
         >
