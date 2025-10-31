@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+import { login } from "@/services/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,38 +17,20 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
     try {
-      const res = await fetch(`${apiUrl}/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      // Panggil service login
+      const data = await login(email, password);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        // Jika validasi gagal (422) atau login salah (401/404)
-        setError(data.message || "Email atau password salah.");
-        setIsLoading(false);
-        return;
-      }
-
-      // --- LOGIN SUKSES ---
+      // Simpan token ke cookie
       Cookies.set("auth-token", data.token, {
         expires: 1,
         secure: true,
         sameSite: "strict",
       });
 
+      // Arahkan ke dashboard
       router.push("/admin/dashboard");
       router.refresh();
-
-      // --- FIX ERROR VERCEL ---
     } catch (error: unknown) {
       console.error("Login failed:", error);
       let message = "Gagal terhubung ke server. Coba lagi nanti.";
@@ -55,6 +38,7 @@ export default function LoginPage() {
         message = error.message;
       }
       setError(message);
+    } finally {
       setIsLoading(false);
     }
   };
